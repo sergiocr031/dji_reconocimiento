@@ -1,0 +1,22 @@
+# Entorno virtual
+venv/
+.env
+
+# Caché de Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Archivos de modelo YOLO (Render lo descarga al arrancar, opcional)
+yolov8n-pose.pt
+
+# Logs y temporales
+*.log
+srv_out.log
+srv_err.log
+srv.pid
+
+# Windows specific
+Thumbs.db
+Desktop.ini
