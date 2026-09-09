@@ -1,9 +1,19 @@
+# --- FastAPI y servidor ---
 fastapi==0.115.0
 uvicorn[standard]==0.30.6
 python-multipart==0.0.9
+
+# --- Procesamiento de imagen ---
 numpy==1.26.4
 opencv-python-headless==4.10.0.84
 pillow==10.4.0
-# YOLO y pose (postura corporal). Requiere Python 3.10 - 3.12 (NO 3.13/3.14).
+
+# --- YOLO y pose (postura corporal). Requiere Python 3.10 - 3.12 ---
 ultralytics==8.3.0
-# torch se instala automáticamente con ultralytics (CPU por defecto).
+
+# --- Torch CPU (IMPORTANTE para Render, que no tiene GPU) ---
+# Se instalan por separado con el índice oficial de PyTorch CPU:
+#   pip install --index-url https://download.pytorch.org/whl/cpu \
+#       torch==2.3.1 torchvision==0.19.1
+# Nota: NO listar torch/torchvision aquí directamente; se instalan en el
+# build command de Render (ver render.yaml) para evitar los wheels CUDA (~3GB).

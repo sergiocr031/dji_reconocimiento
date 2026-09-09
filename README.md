@@ -30,6 +30,24 @@ uvicorn main:app --host 0.0.0.0 --port 8000
 El servidor escucha en el puerto 8000. La app Android debe apuntar a la IP
 de esta máquina (configurable en `NetworkApiClient` / preferencias `server_address`).
 
+## Despliegue en Render
+
+Este repo incluye `render.yaml` para desplegar automáticamente. Solo es un
+servicio web Python, ver Render.docs. Si se configura manualmente, usar:
+
+- **Root Directory**: `backend`
+- **Runtime**: Python 3.12
+- **Build command**:
+  ```
+  pip install --upgrade pip && pip install --index-url https://download.pytorch.org/whl/cpu torch==2.3.1 torchvision==0.19.1 && pip install -r requirements.txt
+  ```
+- **Start command**:
+  ```
+  uvicorn main:app --host 0.0.0.0 --port $PORT
+  ```
+
+Importante: de NO usar `--port 8000` fijo (Render asigna el puerto dinámicamente).
+
 ## Endpoints
 
 | Método | Ruta               | Descripción                               |
