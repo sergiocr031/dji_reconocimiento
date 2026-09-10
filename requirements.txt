@@ -12,8 +12,7 @@ pillow==10.4.0
 ultralytics==8.3.0
 
 # --- Torch CPU (IMPORTANTE para Render, que no tiene GPU) ---
-# Se instalan por separado con el índice oficial de PyTorch CPU:
+# Instalar por separado con el índice oficial de PyTorch CPU en el build command
+# (ver render.yaml). Versiones 2.9+ son las disponibles en ese índice.
 #   pip install --index-url https://download.pytorch.org/whl/cpu \
-#       torch==2.3.1 torchvision==0.19.1
-# Nota: NO listar torch/torchvision aquí directamente; se instalan en el
-# build command de Render (ver render.yaml) para evitar los wheels CUDA (~3GB).
+#       torch torchvision
