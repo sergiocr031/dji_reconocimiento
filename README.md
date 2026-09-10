@@ -35,7 +35,7 @@ de esta máquina (configurable en `NetworkApiClient` / preferencias `server_addr
 Este repo incluye `render.yaml` para desplegar automáticamente. Solo es un
 servicio web Python, ver Render.docs. Si se configura manualmente, usar:
 
-- **Root Directory**: `backend`
+- **Root Directory**: (raíz del repo, dejar vacío)
 - **Runtime**: Python 3.12
 - **Build command**:
   ```
