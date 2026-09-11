@@ -82,6 +82,52 @@ class PostureDetector:
 
         return detections
 
+    def annotate(self, frame_bgr: np.ndarray, detections: list[dict[str, Any]]) -> np.ndarray:
+        """Dibuja las cajas, etiquetas y advertencias de postura en la imagen."""
+        import cv2
+
+        annotated = frame_bgr.copy()
+        for det in detections:
+            x1, y1, x2, y2 = [int(v) for v in det["bbox"]]
+            posture = det["posture"]
+            score = det["score"]
+
+            if posture == "lying_down":
+                color = (0, 0, 255)  # Rojo (Peligro)
+                label = f"!PELIGRO: ACOSTADA! ({score:.2f})"
+            elif posture == "sitting":
+                color = (0, 165, 255)  # Naranja
+                label = f"Sentada ({score:.2f})"
+            else:
+                color = (0, 255, 0)  # Verde (Normal)
+                label = f"De pie ({score:.2f})"
+
+            # Caja delimitadora
+            cv2.rectangle(annotated, (x1, y1), (x2, y2), color, 3)
+
+            # Fondo para el texto
+            (tw, th), _ = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, 0.6, 2)
+            cv2.rectangle(annotated, (x1, max(0, y1 - th - 10)), (x1 + tw + 6, max(th + 10, y1)), color, -1)
+            cv2.putText(
+                annotated,
+                label,
+                (x1 + 3, max(th + 2, y1 - 4)),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.6,
+                (255, 255, 255),
+                2,
+                cv2.LINE_AA,
+            )
+
+            # Dibujar puntos clave si existen
+            keypoints = det.get("keypoints", [])
+            for kp in keypoints:
+                kx, ky = int(kp[0]), int(kp[1])
+                if kx > 0 and ky > 0:
+                    cv2.circle(annotated, (kx, ky), 4, color, -1)
+
+        return annotated
+
     @staticmethod
     def _classify_posture(
         width: float,
@@ -89,38 +135,59 @@ class PostureDetector:
         keypoints: np.ndarray | None,
         index: int,
     ) -> str:
-        """Clasifica la postura de una persona según su geometría.
-
-        Heurística simple:
-          - aspect_ratio = width / height
-          - Una persona de pie es alta y angosta (aspect_ratio bajo).
-          - Una persona acostada es ancha y baja (aspect_ratio alto).
-        """
+        """Clasifica la postura analizando la orientación de la columna y la geometría."""
         if height <= 0:
             return "unknown"
 
         aspect_ratio = width / height
 
-        # Si hay keypoints de pose, podemos confirmar "acostada" si la
-        # altura del cuerpo (hombros-cadera) es mucho menor que el ancho.
+        # Análisis mediante puntos anatómicos (YOLO-pose COCO: 17 keypoints)
         if keypoints is not None and len(keypoints) > index:
             kp = keypoints[index]
-            # YOLO-pose: 5=left_shoulder, 6=right_shoulder, 11=left_hip, 12=right_hip
-            if len(kp) >= 13:
-                shoulder_y = (kp[5][1] + kp[6][1]) / 2.0
-                hip_y = (kp[11][1] + kp[12][1]) / 2.0
-                torso_height = abs(hip_y - shoulder_y)
-                shoulder_width = abs(kp[6][0] - kp[5][0])
-                if torso_height > 0 and shoulder_width / torso_height > 2.5:
-                    return "lying_down"
+            mid_shoulder_x: float | None = None
+            mid_shoulder_y: float | None = None
 
-        if aspect_ratio > 1.6:
+            # 5: hombro izq, 6: hombro der, 11: cadera izq, 12: cadera der
+            if len(kp) >= 13:
+                s_left, s_right = kp[5], kp[6]
+                h_left, h_right = kp[11], kp[12]
+
+                # Verificar hombros
+                if s_left[0] > 0 and s_right[0] > 0:
+                    mid_shoulder_x = float(s_left[0] + s_right[0]) / 2.0
+                    mid_shoulder_y = float(s_left[1] + s_right[1]) / 2.0
+
+                if mid_shoulder_x is not None and h_left[0] > 0 and h_right[0] > 0:
+                    mid_hip_x = float(h_left[0] + h_right[0]) / 2.0
+                    mid_hip_y = float(h_left[1] + h_right[1]) / 2.0
+
+                    dx = abs(mid_shoulder_x - mid_hip_x)
+                    dy = abs(mid_shoulder_y - mid_hip_y)
+
+                    # Si el torso es más horizontal que vertical -> acostada
+                    if dx > 1.2 * dy:
+                        return "lying_down"
+
+            # 15: tobillo izq, 16: tobillo der
+            if len(kp) >= 17 and mid_shoulder_x is not None and mid_shoulder_y is not None:
+                a_left, a_right = kp[15], kp[16]
+                if a_left[0] > 0 and a_right[0] > 0:
+                    mid_ankle_x = float(a_left[0] + a_right[0]) / 2.0
+                    mid_ankle_y = float(a_left[1] + a_right[1]) / 2.0
+
+                    body_dx = abs(mid_shoulder_x - mid_ankle_x)
+                    body_dy = abs(mid_shoulder_y - mid_ankle_y)
+                    if body_dx > 1.1 * body_dy:
+                        return "lying_down"
+
+        # Respaldo por relación de aspecto de la caja delimitadora
+        if aspect_ratio > 1.35:
             return "lying_down"
-        if aspect_ratio > 0.9:
+        if aspect_ratio > 0.85:
             return "sitting"
         return "standing"
 
     @staticmethod
     def is_abnormal(posture: str) -> bool:
-        """Determina si una postura es 'anormal' (acostada)."""
+        """Determina si una postura es 'anormal' o de peligro (persona acostada)."""
         return posture == "lying_down"

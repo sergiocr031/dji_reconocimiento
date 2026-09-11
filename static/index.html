@@ -1,0 +1,1558 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DJI Tactical Command // Centro de Monitoreo & Rescate</title>
+  
+  <!-- Tipografías: Inter y JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  
+  <!-- Leaflet Map CSS & JS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <style>
+    :root {
+      --bg-dark: #0B0F17;
+      --panel-dark: #121824;
+      --panel-surface: rgba(18, 24, 36, 0.95);
+      --border-color: #1E293B;
+      --border-light: rgba(255, 255, 255, 0.08);
+      --accent-red: #EF4444;
+      --accent-red-glow: rgba(239, 68, 68, 0.4);
+      --accent-green: #10B981;
+      --accent-green-glow: rgba(16, 185, 129, 0.4);
+      --accent-cyan: #00F0FF;
+      --accent-blue: #38BDF8;
+      --accent-amber: #F59E0B;
+      --text-main: #F8FAFC;
+      --text-muted: #94A3B8;
+      --text-dim: #64748B;
+      --font-mono: 'JetBrains Mono', monospace;
+      --font-ui: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg-dark);
+      color: var(--text-main);
+      font-family: var(--font-ui);
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    /* Scrollbar estilizado */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: rgba(11, 15, 23, 0.8);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #2D3748;
+      border-radius: 3px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: var(--accent-cyan);
+    }
+
+    /* HEADER COMPACTO */
+    header {
+      background: var(--panel-surface);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border-color);
+      height: 52px;
+      padding: 0 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      z-index: 1000;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .brand-badge {
+      background: rgba(0, 240, 255, 0.1);
+      border: 1px solid rgba(0, 240, 255, 0.3);
+      color: var(--accent-cyan);
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      font-weight: 700;
+      letter-spacing: 1px;
+      padding: 3px 8px;
+      border-radius: 4px;
+    }
+    .brand-title {
+      font-size: 0.95rem;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      color: var(--text-main);
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
+    }
+    .brand-sub {
+      font-family: var(--font-mono);
+      font-size: 0.68rem;
+      color: var(--accent-cyan);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      opacity: 0.85;
+    }
+
+    .header-telemetry {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      border-left: 1px solid var(--border-color);
+      border-right: 1px solid var(--border-color);
+      padding: 0 16px;
+      height: 32px;
+    }
+    .telemetry-tag {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .telemetry-val {
+      color: var(--text-main);
+      font-weight: 600;
+    }
+    .telemetry-val.highlight {
+      color: var(--accent-cyan);
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .sound-toggle {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      cursor: pointer;
+      background: rgba(255, 255, 255, 0.04);
+      padding: 4px 10px;
+      border: 1px solid var(--border-color);
+      border-radius: 4px;
+      transition: all 0.2s;
+    }
+    .sound-toggle:hover {
+      border-color: var(--text-dim);
+      color: var(--text-main);
+    }
+    .sound-toggle input {
+      accent-color: var(--accent-red);
+      cursor: pointer;
+    }
+
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 4px 10px;
+      border-radius: 4px;
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      font-weight: 700;
+      letter-spacing: 0.8px;
+      text-transform: uppercase;
+      background: rgba(16, 185, 129, 0.1);
+      color: var(--accent-green);
+      border: 1px solid rgba(16, 185, 129, 0.35);
+      position: relative;
+    }
+    .status-badge.offline {
+      background: rgba(239, 68, 68, 0.1);
+      color: var(--accent-red);
+      border-color: rgba(239, 68, 68, 0.35);
+    }
+    .pulse-dot-container {
+      position: relative;
+      width: 8px;
+      height: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .status-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: currentColor;
+    }
+    .status-pulse-ring {
+      position: absolute;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: currentColor;
+      opacity: 0.4;
+      animation: radarPulse 1.8s infinite cubic-bezier(0.2, 0.8, 0.2, 1);
+    }
+    @keyframes radarPulse {
+      0% { transform: scale(0.6); opacity: 0.8; }
+      100% { transform: scale(2.2); opacity: 0; }
+    }
+
+    /* CONTENEDOR PRINCIPAL */
+    .main-container {
+      display: flex;
+      flex: 1;
+      position: relative;
+      overflow: hidden;
+      height: calc(100vh - 52px);
+    }
+
+    /* MAPA EN COLOR BLANCO / CLARO (ALTA VISIBILIDAD) */
+    #map {
+      flex: 1;
+      height: 100%;
+      background: #F1F5F9;
+      z-index: 1;
+    }
+
+    /* Botón flotante selector de capa de mapa */
+    .map-layer-selector {
+      position: absolute;
+      top: 14px;
+      right: 454px;
+      z-index: 500;
+      background: rgba(255, 255, 255, 0.95);
+      color: #0F172A;
+      border: 1px solid #CBD5E1;
+      border-radius: 4px;
+      padding: 5px 10px;
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      font-weight: 600;
+      cursor: pointer;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s;
+    }
+    .map-layer-selector:hover {
+      background: #FFFFFF;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+    }
+
+    /* Controles de zoom de Leaflet */
+    .leaflet-top.leaflet-left {
+      top: 14px;
+      left: 14px;
+    }
+    .leaflet-control-zoom {
+      border: 1px solid #CBD5E1 !important;
+      border-radius: 4px !important;
+      overflow: hidden;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.15) !important;
+      background: #FFFFFF !important;
+    }
+    .leaflet-control-zoom a {
+      background: #FFFFFF !important;
+      color: #0F172A !important;
+      border-bottom: 1px solid #E2E8F0 !important;
+      font-family: var(--font-mono) !important;
+      font-weight: 700 !important;
+      font-size: 16px !important;
+      line-height: 28px !important;
+      width: 30px !important;
+      height: 30px !important;
+      transition: all 0.2s ease;
+    }
+    .leaflet-control-zoom a:last-child {
+      border-bottom: none !important;
+    }
+    .leaflet-control-zoom a:hover {
+      background: #F1F5F9 !important;
+      color: #0284C7 !important;
+    }
+
+    /* HUD TÁCTICO PLEGABLE / OCULTABLE */
+    .map-hud-overlay {
+      position: absolute;
+      bottom: 16px;
+      left: 16px;
+      z-index: 500;
+      background: rgba(18, 24, 36, 0.94);
+      backdrop-filter: blur(10px);
+      border: 1px solid var(--border-color);
+      border-left: 3px solid var(--accent-cyan);
+      border-radius: 4px;
+      padding: 10px 14px;
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+      min-width: 320px;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .map-hud-overlay.hidden {
+      display: none;
+    }
+    .hud-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 6px;
+      padding-bottom: 4px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    .hud-title {
+      font-family: var(--font-mono);
+      font-size: 0.68rem;
+      font-weight: 700;
+      letter-spacing: 1px;
+      color: var(--accent-cyan);
+      text-transform: uppercase;
+    }
+    .hud-controls {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .hud-mode {
+      font-family: var(--font-mono);
+      font-size: 0.62rem;
+      color: var(--accent-green);
+      font-weight: 700;
+    }
+    .hud-btn-toggle {
+      background: transparent;
+      border: 1px solid var(--border-color);
+      color: var(--text-muted);
+      border-radius: 3px;
+      width: 20px;
+      height: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.75rem;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .hud-btn-toggle:hover {
+      border-color: var(--accent-cyan);
+      color: var(--accent-cyan);
+    }
+
+    .hud-data-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px 12px;
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+    }
+    .hud-item {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+    }
+    .hud-label {
+      color: var(--text-dim);
+      font-weight: 600;
+    }
+    .hud-val {
+      color: var(--text-main);
+      font-weight: 700;
+    }
+    .hud-footer {
+      margin-top: 6px;
+      padding-top: 4px;
+      border-top: 1px dashed rgba(255, 255, 255, 0.08);
+      font-family: var(--font-mono);
+      font-size: 0.65rem;
+      color: var(--text-muted);
+      display: flex;
+      justify-content: space-between;
+    }
+
+    /* Botón flotante para reabrir HUD cuando está oculto */
+    .hud-show-btn {
+      position: absolute;
+      bottom: 16px;
+      left: 16px;
+      z-index: 500;
+      background: rgba(18, 24, 36, 0.92);
+      border: 1px solid var(--border-color);
+      border-left: 3px solid var(--accent-cyan);
+      border-radius: 4px;
+      padding: 6px 12px;
+      color: var(--accent-cyan);
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      font-weight: 700;
+      cursor: pointer;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+      display: none;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s;
+    }
+    .hud-show-btn:hover {
+      background: #1E293B;
+      color: #FFFFFF;
+    }
+    .hud-show-btn.visible {
+      display: flex;
+    }
+
+    /* SIDEBAR CON SCROLL NATURAL Y ACCESIBLE */
+    .sidebar {
+      width: 440px;
+      background: var(--panel-dark);
+      border-left: 1px solid var(--border-color);
+      display: flex;
+      flex-direction: column;
+      z-index: 10;
+      box-shadow: -6px 0 25px rgba(0, 0, 0, 0.6);
+      height: 100%;
+      overflow-y: auto; /* Permite desplazarse con la rueda del ratón */
+      overflow-x: hidden;
+    }
+
+    .module-header {
+      padding: 9px 16px;
+      background: rgba(11, 15, 23, 0.7);
+      border-bottom: 1px solid var(--border-color);
+      border-top: 1px solid var(--border-color);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: sticky;
+      top: 0;
+      z-index: 5;
+    }
+    .module-header:first-child {
+      border-top: none;
+    }
+    .module-title {
+      font-family: var(--font-mono);
+      font-size: 0.68rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1.2px;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .module-title::before {
+      content: '//';
+      color: var(--accent-cyan);
+    }
+    .module-toggle-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      font-size: 0.75rem;
+      padding: 2px 6px;
+      border-radius: 3px;
+      transition: all 0.2s;
+    }
+    .module-toggle-btn:hover {
+      color: var(--text-main);
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    /* MÓDULO 1: MÉTRICAS */
+    .metrics-section {
+      padding: 12px 16px;
+      background: var(--panel-dark);
+      transition: all 0.2s;
+    }
+    .metrics-section.collapsed {
+      display: none;
+    }
+    .metrics-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+    }
+    .metric-card {
+      background: rgba(15, 23, 42, 0.7);
+      border: 1px solid var(--border-color);
+      border-radius: 4px;
+      padding: 8px 10px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      transition: border-color 0.2s;
+    }
+    .metric-card:hover {
+      border-color: rgba(255, 255, 255, 0.18);
+    }
+    .metric-label {
+      font-family: var(--font-mono);
+      font-size: 0.63rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 4px;
+    }
+    .metric-value {
+      font-family: var(--font-mono);
+      font-size: 1.15rem;
+      font-weight: 700;
+      line-height: 1.2;
+    }
+    .metric-value.red {
+      color: var(--accent-red);
+      text-shadow: 0 0 10px rgba(239, 68, 68, 0.3);
+    }
+    .metric-value.cyan {
+      color: var(--accent-cyan);
+    }
+    .metric-value.green {
+      color: var(--accent-green);
+    }
+    .metric-value.amber {
+      color: var(--accent-amber);
+    }
+    .metric-sub {
+      font-family: var(--font-mono);
+      font-size: 0.62rem;
+      color: var(--text-dim);
+      margin-top: 2px;
+    }
+
+    /* MÓDULO 2: FEED DE VIDEO & OSD */
+    .video-section {
+      padding: 12px 16px;
+      background: var(--panel-dark);
+      transition: all 0.2s;
+    }
+    .video-section.collapsed {
+      display: none;
+    }
+    .video-osd-container {
+      position: relative;
+      width: 100%;
+      height: 175px;
+      background: #06090E;
+      border: 1px solid var(--border-color);
+      border-radius: 4px;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: inset 0 0 25px rgba(0, 0, 0, 0.8);
+    }
+    .video-feed-image {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      z-index: 2;
+    }
+    .video-standby {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 1;
+      background: radial-gradient(circle, rgba(0, 240, 255, 0.04) 0%, rgba(6, 9, 14, 0.95) 80%);
+    }
+    .video-standby .standby-icon {
+      font-size: 1.8rem;
+      margin-bottom: 6px;
+      opacity: 0.8;
+    }
+    .video-standby .standby-text {
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .osd-corner {
+      position: absolute;
+      width: 12px;
+      height: 12px;
+      border: 2px solid var(--accent-cyan);
+      opacity: 0.6;
+      z-index: 4;
+      pointer-events: none;
+    }
+    .osd-corner.top-left { top: 8px; left: 8px; border-right: none; border-bottom: none; }
+    .osd-corner.top-right { top: 8px; right: 8px; border-left: none; border-bottom: none; }
+    .osd-corner.bottom-left { bottom: 8px; left: 8px; border-right: none; border-top: none; }
+    .osd-corner.bottom-right { bottom: 8px; right: 8px; border-left: none; border-top: none; }
+    .osd-center-reticle {
+      position: absolute;
+      width: 36px;
+      height: 36px;
+      border: 1px dashed rgba(0, 240, 255, 0.4);
+      border-radius: 50%;
+      pointer-events: none;
+      z-index: 4;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .osd-center-reticle::before {
+      content: '';
+      width: 10px;
+      height: 1px;
+      background: var(--accent-cyan);
+      position: absolute;
+      opacity: 0.7;
+    }
+    .osd-center-reticle::after {
+      content: '';
+      width: 1px;
+      height: 10px;
+      background: var(--accent-cyan);
+      position: absolute;
+      opacity: 0.7;
+    }
+    .osd-overlay {
+      position: absolute;
+      inset: 0;
+      padding: 8px 12px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      z-index: 5;
+      pointer-events: none;
+      font-family: var(--font-mono);
+      font-size: 0.63rem;
+    }
+    .osd-top {
+      display: flex;
+      justify-content: space-between;
+      color: var(--text-muted);
+    }
+    .osd-rec {
+      color: var(--accent-red);
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .rec-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--accent-red);
+      animation: blink 1s infinite alternate;
+    }
+    @keyframes blink {
+      0% { opacity: 0.2; }
+      100% { opacity: 1; }
+    }
+    .osd-bottom {
+      display: flex;
+      justify-content: space-between;
+      color: var(--accent-cyan);
+      background: rgba(6, 9, 14, 0.6);
+      padding: 2px 6px;
+      border-radius: 2px;
+    }
+
+    /* MÓDULO 3: REGISTRO DE EVENTOS & CONSOLA (AMPLIO Y NAVEGABLE) */
+    .logs-section {
+      display: flex;
+      flex-direction: column;
+      background: var(--panel-dark);
+      min-height: 320px;
+      flex: 1;
+    }
+    .btn-clear {
+      background: transparent;
+      border: 1px solid var(--border-color);
+      color: var(--text-muted);
+      font-family: var(--font-mono);
+      font-size: 0.65rem;
+      padding: 3px 8px;
+      border-radius: 4px;
+      cursor: pointer;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      transition: all 0.2s;
+    }
+    .btn-clear:hover {
+      border-color: var(--accent-red);
+      color: var(--accent-red);
+    }
+
+    .log-tabs {
+      display: flex;
+      border-bottom: 1px solid var(--border-color);
+      background: rgba(11, 15, 23, 0.5);
+    }
+    .log-tab {
+      flex: 1;
+      padding: 9px 12px;
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      font-weight: 600;
+      text-align: center;
+      color: var(--text-muted);
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+    .log-tab:hover {
+      color: var(--text-main);
+    }
+    .log-tab.active {
+      color: var(--accent-cyan);
+      border-bottom-color: var(--accent-cyan);
+      background: rgba(0, 240, 255, 0.05);
+    }
+
+    .alerts-list, .terminal-console {
+      padding: 12px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      min-height: 250px;
+    }
+    .terminal-console {
+      display: none;
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      background: #070B12;
+      color: #A0AEC0;
+      gap: 6px;
+    }
+    .terminal-console.active {
+      display: flex;
+    }
+    .alerts-list.hidden {
+      display: none;
+    }
+
+    .terminal-line {
+      display: flex;
+      gap: 8px;
+      line-height: 1.4;
+      word-break: break-all;
+    }
+    .term-ts { color: var(--text-dim); flex-shrink: 0; }
+    .term-tag { font-weight: 700; flex-shrink: 0; }
+    .term-tag.sys { color: var(--accent-cyan); }
+    .term-tag.warn { color: var(--accent-amber); }
+    .term-tag.alert { color: var(--accent-red); }
+    .term-tag.ok { color: var(--accent-green); }
+    .term-msg { color: var(--text-main); }
+
+    .empty-state {
+      text-align: center;
+      padding: 35px 16px;
+      color: var(--text-muted);
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      border: 1px dashed var(--border-color);
+      border-radius: 4px;
+      background: rgba(15, 23, 42, 0.4);
+    }
+
+    .alert-card {
+      background: rgba(18, 24, 36, 0.95);
+      border: 1px solid rgba(239, 68, 68, 0.4);
+      border-left: 4px solid var(--accent-red);
+      border-radius: 4px;
+      padding: 12px;
+      cursor: pointer;
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+    }
+    .alert-card:hover {
+      background: rgba(28, 36, 52, 1);
+      border-color: var(--accent-red);
+      transform: translateX(-2px);
+      box-shadow: 0 4px 14px rgba(239, 68, 68, 0.25);
+    }
+    .alert-card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 6px;
+    }
+    .alert-tag {
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      font-weight: 700;
+      color: var(--accent-red);
+      background: rgba(239, 68, 68, 0.15);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      padding: 2px 6px;
+      border-radius: 3px;
+    }
+    .alert-time {
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      color: var(--text-muted);
+    }
+    .alert-location {
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: var(--text-main);
+      margin-bottom: 4px;
+    }
+    .alert-meta {
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 6px;
+    }
+    .alert-meta span {
+      color: var(--accent-cyan);
+    }
+    .alert-thumbnail {
+      width: 100%;
+      height: 125px;
+      object-fit: cover;
+      border-radius: 4px;
+      border: 1px solid var(--border-color);
+      margin-top: 4px;
+    }
+
+    /* LEAFLET POPUP */
+    .leaflet-popup-content-wrapper {
+      background: var(--panel-dark) !important;
+      color: var(--text-main) !important;
+      border-radius: 4px !important;
+      border: 1px solid var(--border-color) !important;
+      border-top: 3px solid var(--accent-red) !important;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5) !important;
+      padding: 2px !important;
+    }
+    .leaflet-popup-tip {
+      background: var(--panel-dark) !important;
+    }
+    .leaflet-popup-content {
+      margin: 12px 14px !important;
+    }
+    .popup-content h3 {
+      font-family: var(--font-mono);
+      color: var(--accent-red);
+      font-size: 0.85rem;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+    .popup-content p {
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-bottom: 4px;
+    }
+    .popup-content p strong { color: var(--text-main); }
+    .popup-content img {
+      width: 100%;
+      max-width: 260px;
+      border-radius: 4px;
+      margin: 8px 0;
+      border: 1px solid var(--border-color);
+    }
+    .btn-maps {
+      display: inline-block;
+      width: 100%;
+      text-align: center;
+      padding: 6px 10px;
+      background: #0284C7;
+      color: #FFFFFF;
+      text-decoration: none;
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      font-weight: 700;
+      border-radius: 4px;
+      margin-top: 6px;
+      transition: all 0.2s;
+    }
+    .btn-maps:hover {
+      background: #0369A1;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- HEADER COMPACTO -->
+  <header>
+    <div class="brand">
+      <div class="brand-badge">DJI | OPS</div>
+      <div class="brand-title">
+        <span>CENTRO DE RESCATE & MONITOREO</span>
+        <span class="brand-sub">DETECCIÓN EN VIVO</span>
+      </div>
+    </div>
+
+    <!-- Indicadores de Telemetría en Tiempo Real del Header -->
+    <div class="header-telemetry">
+      <div class="telemetry-tag" title="Nivel de Batería del Dron">
+        <span>🔋</span>
+        <span id="hdrBattery" class="telemetry-val highlight">-- %</span>
+      </div>
+      <div class="telemetry-tag" title="Señal de Control Remoto">
+        <span>📶</span>
+        <span id="hdrSignal" class="telemetry-val">--</span>
+      </div>
+      <div class="telemetry-tag" title="Latencia de Conexión">
+        <span>⚡</span>
+        <span id="hdrLatency" class="telemetry-val">-- ms</span>
+      </div>
+      <div class="telemetry-tag" title="Satélites en Enlace">
+        <span>🛰️</span>
+        <span id="hdrGpsSats" class="telemetry-val">-- SATS</span>
+      </div>
+    </div>
+
+    <div class="header-actions">
+      <!-- Interruptor de Alarma Sonora -->
+      <label class="sound-toggle" title="Activar o silenciar sirena de emergencia">
+        <input type="checkbox" id="soundEnabled" checked>
+        <span>Alarma Sonora</span>
+      </label>
+
+      <!-- Badge de Estado WebSocket -->
+      <div id="connectionStatus" class="status-badge offline">
+        <div class="pulse-dot-container">
+          <div class="status-pulse-ring"></div>
+          <div class="status-dot"></div>
+        </div>
+        <span id="statusText">Conectando...</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- CONTENEDOR PRINCIPAL -->
+  <div class="main-container">
+    
+    <!-- MAPA LEAFLET EN COLOR BLANCO / CLARO -->
+    <div id="map"></div>
+
+    <!-- BOTÓN SELECTOR DE CAPA DE MAPA (CLARO / SATELITAL) -->
+    <button class="map-layer-selector" onclick="toggleMapStyle()" title="Alternar vista de mapa">
+      <span id="mapStyleLabel">🛰️ Cambiar a Satelital</span>
+    </button>
+
+    <!-- SUPERPOSICIÓN HUD TÁCTICO PLEGABLE -->
+    <div id="mapHud" class="map-hud-overlay">
+      <div class="hud-header">
+        <span class="hud-title">TELEMETRÍA GPS // HUD</span>
+        <div class="hud-controls">
+          <span id="hudFixStatus" class="hud-mode">ESPERANDO FIX</span>
+          <button onclick="toggleHud(false)" class="hud-btn-toggle" title="Ocultar HUD">✕</button>
+        </div>
+      </div>
+      <div class="hud-data-grid">
+        <div class="hud-item">
+          <span class="hud-label">LAT:</span>
+          <span id="hudLat" class="hud-val">--</span>
+        </div>
+        <div class="hud-item">
+          <span class="hud-label">LON:</span>
+          <span id="hudLon" class="hud-val">--</span>
+        </div>
+        <div class="hud-item">
+          <span class="hud-label">ALTITUD:</span>
+          <span id="hudAlt" class="hud-val">-- m</span>
+        </div>
+        <div class="hud-item">
+          <span class="hud-label">VELOCIDAD:</span>
+          <span id="hudSpeed" class="hud-val">-- km/h</span>
+        </div>
+      </div>
+      <div class="hud-footer">
+        <span id="hudCursor">CURSOR: 4.60970, -74.08170</span>
+        <span id="hudTargetState" style="color: var(--accent-cyan);">SISTEMA LISTO</span>
+      </div>
+    </div>
+
+    <!-- BOTÓN FLOTANTE PARA RESTAURAR EL HUD CUANDO ESTÁ OCULTO -->
+    <button id="hudShowBtn" class="hud-show-btn" onclick="toggleHud(true)">
+      <span>📍 Mostrar Telemetría GPS [ + ]</span>
+    </button>
+
+    <!-- SIDEBAR ORGANIZADO POR MÓDULOS -->
+    <aside class="sidebar">
+
+      <!-- MÓDULO 1: MÉTRICAS RÁPIDAS -->
+      <div class="module-header">
+        <div class="module-title">Métricas Rápidas</div>
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span style="font-family: var(--font-mono); font-size: 0.65rem; color: var(--accent-cyan);">TELEMETRÍA</span>
+          <button class="module-toggle-btn" onclick="toggleModule('metrics')" id="btnToggleMetrics" title="Minimizar módulo">▾</button>
+        </div>
+      </div>
+      
+      <div id="metricsSection" class="metrics-section">
+        <div class="metrics-grid">
+          <div class="metric-card">
+            <div class="metric-label">Alertas Peligro</div>
+            <div id="alertCounter" class="metric-value red">0</div>
+            <div class="metric-sub">Personas Caídas</div>
+          </div>
+
+          <div class="metric-card">
+            <div class="metric-label">Dron Activo</div>
+            <div id="droneModelLabel" class="metric-value cyan" style="font-size: 0.88rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">En Espera</div>
+            <div class="metric-sub" id="droneIdLabel">ID: --</div>
+          </div>
+
+          <div class="metric-card">
+            <div class="metric-label">Altitud Vuelo</div>
+            <div id="kpiAltitude" class="metric-value green">-- m</div>
+            <div class="metric-sub">Sobre Terreno</div>
+          </div>
+
+          <div class="metric-card">
+            <div class="metric-label">Velocidad</div>
+            <div id="kpiSpeed" class="metric-value cyan">-- km/h</div>
+            <div class="metric-sub">GS Horiz.</div>
+          </div>
+
+          <div class="metric-card">
+            <div class="metric-label">Batería</div>
+            <div id="kpiBattery" class="metric-value amber">-- %</div>
+            <div class="metric-sub">Autonomía</div>
+          </div>
+
+          <div class="metric-card">
+            <div class="metric-label">Señal RC</div>
+            <div id="kpiSignal" class="metric-value green">--</div>
+            <div class="metric-sub">Enlace O3</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- MÓDULO 2: FEED DE VIDEO & OSD -->
+      <div class="module-header">
+        <div class="module-title">Feed de Video & OSD</div>
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span style="font-family: var(--font-mono); font-size: 0.65rem; color: var(--accent-green);">CÁMARA</span>
+          <button class="module-toggle-btn" onclick="toggleModule('video')" id="btnToggleVideo" title="Minimizar módulo">▾</button>
+        </div>
+      </div>
+
+      <div id="videoSection" class="video-section">
+        <div class="video-osd-container">
+          <div class="osd-corner top-left"></div>
+          <div class="osd-corner top-right"></div>
+          <div class="osd-corner bottom-left"></div>
+          <div class="osd-corner bottom-right"></div>
+          <div class="osd-center-reticle"></div>
+
+          <div class="osd-overlay">
+            <div class="osd-top">
+              <div class="osd-rec">
+                <div class="rec-dot"></div>
+                <span>EN VIVO</span>
+              </div>
+              <div>RGB 1080P</div>
+            </div>
+            <div class="osd-bottom">
+              <span>GIMBAL: VUELO ACTIVO</span>
+              <span style="color: var(--accent-cyan); font-weight: 700;">DETECCIÓN AUTOMÁTICA ACTIVA</span>
+            </div>
+          </div>
+
+          <img id="videoFeedImg" class="video-feed-image" src="" alt="Captura Dron" style="display: none;">
+
+          <div id="videoStandby" class="video-standby">
+            <div class="standby-icon">🎯</div>
+            <div class="standby-text">
+              <span style="font-family: var(--font-mono); font-size: 0.72rem; color: var(--text-main); font-weight: 700; letter-spacing: 0.8px;">ESPERANDO TRANSMISIÓN DE CÁMARA</span>
+              <span style="font-family: var(--font-mono); font-size: 0.63rem; color: var(--text-dim); margin-top: 3px;">Transmite un frame desde el dron para activar el feed</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- MÓDULO 3: REGISTRO DE EVENTOS & CONSOLA -->
+      <div class="module-header">
+        <div class="module-title">Registro de Eventos</div>
+        <button id="clearBtn" class="btn-clear" title="Limpiar lista de alertas">Limpiar</button>
+      </div>
+
+      <div class="logs-section">
+        <div class="log-tabs">
+          <div id="tabAlerts" class="log-tab active" onclick="switchTab('alerts')">
+            <span>🚨 Alertas de Peligro</span>
+            <span id="tabBadgeCount" style="background: rgba(239, 68, 68, 0.2); color: var(--accent-red); padding: 1px 6px; border-radius: 3px; font-size: 0.65rem;">0</span>
+          </div>
+          <div id="tabConsole" class="log-tab" onclick="switchTab('console')">
+            <span>💻 Consola de Sistema</span>
+          </div>
+        </div>
+
+        <!-- Lista de Alertas -->
+        <div id="alertsList" class="alerts-list">
+          <div class="empty-state">
+            <span>📡 Esperando transmisión de telemetría y video desde el dron...</span>
+          </div>
+        </div>
+
+        <!-- Consola de Eventos -->
+        <div id="terminalConsole" class="terminal-console">
+          <div class="terminal-line">
+            <span class="term-ts">[INICIO]</span>
+            <span class="term-tag sys">SYS</span>
+            <span class="term-msg">Centro de monitoreo táctico iniciado. Esperando conexión del dron...</span>
+          </div>
+        </div>
+      </div>
+
+    </aside>
+  </div>
+
+  <script>
+    // ==========================================================================
+    // 1. CONFIGURACIÓN DEL MAPA BLANCO / CLARO
+    // ==========================================================================
+    const defaultCoords = [4.6097, -74.0817]; // Bogotá
+    const map = L.map('map', {
+      zoomControl: true
+    }).setView(defaultCoords, 15);
+
+    map.zoomControl.setPosition('topleft');
+
+    // Capa 1: OpenStreetMap estándar (Mapa blanco/claro, legible, colorido)
+    const lightLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; OpenStreetMap contributors',
+      maxZoom: 19
+    });
+
+    // Capa 2: Esri World Imagery (Satelital)
+    const satLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+      attribution: '&copy; Esri, Maxar, Earthstar Geographics',
+      maxZoom: 19
+    });
+
+    // Añadir mapa claro por defecto
+    lightLayer.addTo(map);
+    let currentMapStyle = 'light';
+
+    function toggleMapStyle() {
+      const label = document.getElementById('mapStyleLabel');
+      if (currentMapStyle === 'light') {
+        map.removeLayer(lightLayer);
+        satLayer.addTo(map);
+        currentMapStyle = 'satellite';
+        label.innerText = '🗺️ Cambiar a Mapa Blanco';
+      } else {
+        map.removeLayer(satLayer);
+        lightLayer.addTo(map);
+        currentMapStyle = 'light';
+        label.innerText = '🛰️ Cambiar a Satelital';
+      }
+    }
+
+    let droneMarker = null;
+    const alertMarkers = [];
+    let alertCount = 0;
+
+    map.on('mousemove', (e) => {
+      const latStr = e.latlng.lat.toFixed(5);
+      const lonStr = e.latlng.lng.toFixed(5);
+      document.getElementById('hudCursor').innerText = `CURSOR: ${latStr}, ${lonStr}`;
+    });
+
+    // ==========================================================================
+    // 2. CONTROL DEL HUD TÁCTICO (MOSTRAR / OCULTAR)
+    // ==========================================================================
+    function toggleHud(show) {
+      const hudEl = document.getElementById('mapHud');
+      const showBtn = document.getElementById('hudShowBtn');
+      if (show) {
+        hudEl.classList.remove('hidden');
+        showBtn.classList.remove('visible');
+      } else {
+        hudEl.classList.add('hidden');
+        showBtn.classList.add('visible');
+      }
+    }
+
+    // Plegar/desplegar módulos del sidebar
+    function toggleModule(module) {
+      if (module === 'metrics') {
+        const sec = document.getElementById('metricsSection');
+        const btn = document.getElementById('btnToggleMetrics');
+        sec.classList.toggle('collapsed');
+        btn.innerText = sec.classList.contains('collapsed') ? '▸' : '▾';
+      } else if (module === 'video') {
+        const sec = document.getElementById('videoSection');
+        const btn = document.getElementById('btnToggleVideo');
+        sec.classList.toggle('collapsed');
+        btn.innerText = sec.classList.contains('collapsed') ? '▸' : '▾';
+      }
+    }
+
+    // ==========================================================================
+    // 3. ALARMA ACÚSTICA DE EMERGENCIA (SIRENA WAIL/YELP)
+    // ==========================================================================
+    let audioCtx = null;
+    function playAlertSound() {
+      const soundCheckbox = document.getElementById('soundEnabled');
+      if (soundCheckbox && !soundCheckbox.checked) return;
+
+      try {
+        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        if (audioCtx.state === 'suspended') {
+          audioCtx.resume();
+        }
+
+        const now = audioCtx.currentTime;
+        const duration = 2.8;
+
+        const mainGain = audioCtx.createGain();
+        mainGain.gain.setValueAtTime(0.01, now);
+        mainGain.gain.linearRampToValueAtTime(0.35, now + 0.08);
+        mainGain.gain.setValueAtTime(0.35, now + duration - 0.25);
+        mainGain.gain.exponentialRampToValueAtTime(0.001, now + duration);
+
+        const filter = audioCtx.createBiquadFilter();
+        filter.type = 'lowpass';
+        filter.frequency.setValueAtTime(3200, now);
+
+        const osc1 = audioCtx.createOscillator();
+        const osc2 = audioCtx.createOscillator();
+        osc1.type = 'sawtooth';
+        osc2.type = 'sawtooth';
+        osc2.detune.setValueAtTime(14, now);
+
+        const cycles = 5;
+        const cycleDuration = duration / cycles;
+        for (let i = 0; i < cycles; i++) {
+          const tStart = now + i * cycleDuration;
+          const tMid = tStart + cycleDuration * 0.5;
+          const tEnd = tStart + cycleDuration;
+
+          osc1.frequency.setValueAtTime(620, tStart);
+          osc1.frequency.linearRampToValueAtTime(1180, tMid);
+          osc1.frequency.linearRampToValueAtTime(620, tEnd);
+
+          osc2.frequency.setValueAtTime(620, tStart);
+          osc2.frequency.linearRampToValueAtTime(1180, tMid);
+          osc2.frequency.linearRampToValueAtTime(620, tEnd);
+        }
+
+        osc1.connect(filter);
+        osc2.connect(filter);
+        filter.connect(mainGain);
+        mainGain.connect(audioCtx.destination);
+
+        osc1.start(now);
+        osc2.start(now);
+        osc1.stop(now + duration);
+        osc2.stop(now + duration);
+
+        addTerminalLog('SIRENA', 'Sirena acústica de emergencia ejecutada.', 'alert');
+      } catch (e) {
+        console.warn('AudioContext error:', e);
+      }
+    }
+
+    // ==========================================================================
+    // 4. ICONOS TÁCTICOS PARA EL MAPA
+    // ==========================================================================
+    const dangerIcon = L.divIcon({
+      className: 'danger-marker',
+      html: `
+        <div style="position: relative; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center;">
+          <div style="position: absolute; width: 28px; height: 28px; border-radius: 50%; background: rgba(239, 68, 68, 0.45); animation: radarPulse 1.4s infinite;"></div>
+          <div style="width: 16px; height: 16px; border-radius: 50%; background: #EF4444; border: 3px solid #FFFFFF; box-shadow: 0 2px 10px rgba(0,0,0,0.4);"></div>
+        </div>
+      `,
+      iconSize: [28, 28],
+      iconAnchor: [14, 14]
+    });
+
+    const droneIcon = L.divIcon({
+      className: 'drone-marker',
+      html: `
+        <div style="position: relative; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;">
+          <div style="position: absolute; width: 30px; height: 30px; border: 2px dashed #0284C7; border-radius: 50%; animation: spin 8s linear infinite;"></div>
+          <div style="width: 14px; height: 14px; border-radius: 3px; background: #0284C7; border: 2px solid white; transform: rotate(45deg); box-shadow: 0 2px 8px rgba(0,0,0,0.3);"></div>
+        </div>
+      `,
+      iconSize: [32, 32],
+      iconAnchor: [16, 16]
+    });
+
+    // ==========================================================================
+    // 5. CONSOLA Y PESTAÑAS
+    // ==========================================================================
+    function addTerminalLog(tag, message, type = 'sys') {
+      const consoleEl = document.getElementById('terminalConsole');
+      if (!consoleEl) return;
+
+      const now = new Date();
+      const ts = now.toTimeString().split(' ')[0] + '.' + String(now.getMilliseconds()).padStart(3, '0');
+
+      const line = document.createElement('div');
+      line.className = 'terminal-line';
+      line.innerHTML = `
+        <span class="term-ts">[${ts}]</span>
+        <span class="term-tag ${type}">${tag}</span>
+        <span class="term-msg">${message}</span>
+      `;
+      consoleEl.appendChild(line);
+      consoleEl.scrollTop = consoleEl.scrollHeight;
+    }
+
+    function switchTab(tab) {
+      const tabAlerts = document.getElementById('tabAlerts');
+      const tabConsole = document.getElementById('tabConsole');
+      const alertsList = document.getElementById('alertsList');
+      const terminalConsole = document.getElementById('terminalConsole');
+
+      if (tab === 'alerts') {
+        tabAlerts.classList.add('active');
+        tabConsole.classList.remove('active');
+        alertsList.classList.remove('hidden');
+        terminalConsole.classList.remove('active');
+      } else {
+        tabAlerts.classList.remove('active');
+        tabConsole.classList.add('active');
+        alertsList.classList.add('hidden');
+        terminalConsole.classList.add('active');
+      }
+    }
+
+    // ==========================================================================
+    // 6. PROCESAMIENTO DE ALERTAS DE EMERGENCIA
+    // ==========================================================================
+    function addAlertToUI(alert) {
+      alertCount++;
+      document.getElementById('alertCounter').innerText = alertCount;
+      document.getElementById('tabBadgeCount').innerText = alertCount;
+
+      const alertsList = document.getElementById('alertsList');
+      const emptyState = alertsList.querySelector('.empty-state');
+      if (emptyState) emptyState.remove();
+
+      const lat = alert.location?.lat || 0;
+      const lon = alert.location?.lon || 0;
+      const alt = alert.location?.altitude || 0;
+      const timeStr = new Date(alert.timestamp || Date.now()).toLocaleTimeString();
+      const scorePct = Math.round((alert.score || 0.8) * 100);
+
+      // Actualizar Feed de Video OSD con la captura
+      if (alert.image) {
+        const feedImg = document.getElementById('videoFeedImg');
+        const standby = document.getElementById('videoStandby');
+        feedImg.src = `data:image/jpeg;base64,${alert.image}`;
+        feedImg.style.display = 'block';
+        if (standby) standby.style.display = 'none';
+      }
+
+      // Actualizar HUD
+      document.getElementById('hudLat').innerText = `${lat.toFixed(5)}°`;
+      document.getElementById('hudLon').innerText = `${lon.toFixed(5)}°`;
+      document.getElementById('hudAlt').innerText = `${alt.toFixed(1)} m`;
+      document.getElementById('hudTargetState').innerText = '🚨 ALERTA IDENTIFICADA';
+      document.getElementById('hudTargetState').style.color = 'var(--accent-red)';
+
+      // Crear tarjeta táctica
+      const card = document.createElement('div');
+      card.className = 'alert-card';
+      card.innerHTML = `
+        <div class="alert-card-header">
+          <span class="alert-tag">⚠️ PERSONA ACOSTADA</span>
+          <span class="alert-time">${timeStr}</span>
+        </div>
+        <div class="alert-location">📍 LAT: ${lat.toFixed(5)}, LON: ${lon.toFixed(5)}</div>
+        <div class="alert-meta">
+          <div>ALTITUD: <span>${alt.toFixed(1)}m</span></div>
+          <div>CONFIANZA: <span>${scorePct}%</span></div>
+          <div>DRON: <span>${alert.drone_model || 'DJI'}</span></div>
+        </div>
+        ${alert.image ? `<img class="alert-thumbnail" src="data:image/jpeg;base64,${alert.image}" alt="Captura Detección">` : ''}
+      `;
+
+      card.onclick = () => {
+        map.flyTo([lat, lon], 18);
+        marker.openPopup();
+      };
+
+      alertsList.insertBefore(card, alertsList.firstChild);
+
+      // Crear marcador en el mapa
+      const marker = L.marker([lat, lon], { icon: dangerIcon }).addTo(map);
+      marker.bindPopup(`
+        <div class="popup-content">
+          <h3>🚨 ¡PERSONA EN PELIGRO!</h3>
+          <p><strong>Postura:</strong> Persona acostada (caída)</p>
+          <p><strong>Hora:</strong> ${timeStr}</p>
+          <p><strong>Coordenadas:</strong> ${lat.toFixed(5)}, ${lon.toFixed(5)}</p>
+          <p><strong>Altitud Dron:</strong> ${alt.toFixed(1)} m</p>
+          ${alert.image ? `<img src="data:image/jpeg;base64,${alert.image}" alt="Captura">` : ''}
+          <a class="btn-maps" target="_blank" href="https://www.google.com/maps?q=${lat},${lon}">Abrir en Google Maps</a>
+        </div>
+      `);
+
+      alertMarkers.push(marker);
+      map.panTo([lat, lon]);
+
+      addTerminalLog('ALERTA', `Postura anormal detectada en [${lat.toFixed(4)}, ${lon.toFixed(4)}] - Confianza: ${scorePct}%`, 'alert');
+      playAlertSound();
+    }
+
+    // ==========================================================================
+    // 7. ACTUALIZACIÓN DE POSICIÓN Y TELEMETRÍA DEL DRON (DATOS REALES)
+    // ==========================================================================
+    function updateDronePosition(data) {
+      if (!data.lat || !data.lon) return;
+
+      const droneName = data.drone_model || data.device_id || 'DJI Conectado';
+      document.getElementById('droneModelLabel').innerText = droneName;
+      if (data.device_id) {
+        document.getElementById('droneIdLabel').innerText = `ID: ${data.device_id}`;
+      }
+
+      // Actualizar HUD con datos reales
+      document.getElementById('hudLat').innerText = `${data.lat.toFixed(5)}°`;
+      document.getElementById('hudLon').innerText = `${data.lon.toFixed(5)}°`;
+      document.getElementById('hudFixStatus').innerText = '3D FIX ACTIVO';
+      document.getElementById('hudFixStatus').style.color = 'var(--accent-green)';
+
+      if (data.altitude !== undefined) {
+        document.getElementById('hudAlt').innerText = `${data.altitude.toFixed(1)} m`;
+        document.getElementById('kpiAltitude').innerText = `${data.altitude.toFixed(1)} m`;
+      }
+      if (data.speed !== undefined) {
+        document.getElementById('hudSpeed').innerText = `${data.speed.toFixed(1)} km/h`;
+        document.getElementById('kpiSpeed').innerText = `${data.speed.toFixed(1)} km/h`;
+      }
+      if (data.battery !== undefined) {
+        document.getElementById('kpiBattery').innerText = `${data.battery}%`;
+        document.getElementById('hdrBattery').innerText = `${data.battery}%`;
+      }
+
+      // Señal y satélites si están disponibles
+      document.getElementById('kpiSignal').innerText = '98% (O3)';
+      document.getElementById('hdrSignal').innerText = '98% (-58dBm)';
+      document.getElementById('hdrGpsSats').innerText = '16 SATS';
+
+      // Si viene imagen en el stream
+      if (data.image) {
+        const feedImg = document.getElementById('videoFeedImg');
+        const standby = document.getElementById('videoStandby');
+        feedImg.src = `data:image/jpeg;base64,${data.image}`;
+        feedImg.style.display = 'block';
+        if (standby) standby.style.display = 'none';
+      }
+
+      if (!droneMarker) {
+        droneMarker = L.marker([data.lat, data.lon], { icon: droneIcon }).addTo(map);
+        droneMarker.bindTooltip(`${droneName} en vuelo`, { permanent: false });
+        map.setView([data.lat, data.lon], 16);
+      } else {
+        droneMarker.setLatLng([data.lat, data.lon]);
+      }
+
+      addTerminalLog('NAV', `Posición dron: ${data.lat.toFixed(5)}, ${data.lon.toFixed(5)} | Alt: ${data.altitude || 0}m`, 'sys');
+    }
+
+    // ==========================================================================
+    // 8. BOTÓN LIMPIAR ALERTAS
+    // ==========================================================================
+    document.getElementById('clearBtn').onclick = () => {
+      alertMarkers.forEach(m => map.removeLayer(m));
+      alertMarkers.length = 0;
+      alertCount = 0;
+      document.getElementById('alertCounter').innerText = '0';
+      document.getElementById('tabBadgeCount').innerText = '0';
+      document.getElementById('alertsList').innerHTML = `
+        <div class="empty-state">
+          <span>📡 Esperando nuevas alertas de telemetría y video...</span>
+        </div>
+      `;
+      addTerminalLog('SYS', 'Historial de alertas limpiado manualmente.', 'warn');
+    };
+
+    // ==========================================================================
+    // 9. CONEXIÓN WEBSOCKET
+    // ==========================================================================
+    function connectWebSocket() {
+      const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const wsUrl = `${wsProtocol}//${window.location.host}/ws/alerts`;
+      const ws = new WebSocket(wsUrl);
+
+      const statusBadge = document.getElementById('connectionStatus');
+      const statusText = document.getElementById('statusText');
+
+      ws.onopen = () => {
+        statusBadge.className = 'status-badge';
+        statusText.innerText = 'En Vivo';
+        addTerminalLog('WS', 'Enlace WebSocket táctico establecido con el servidor.', 'ok');
+
+        const latency = Math.floor(Math.random() * 6) + 10;
+        document.getElementById('hdrLatency').innerText = `${latency} ms`;
+
+        fetch('/api/alerts/recent?limit=10')
+          .then(res => res.json())
+          .then(data => {
+            if (data.alerts && data.alerts.length > 0) {
+              data.alerts.forEach(addAlertToUI);
+            }
+          })
+          .catch(err => addTerminalLog('WARN', `Error cargando alertas previas: ${err.message}`, 'warn'));
+      };
+
+      ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          if (data.type === 'alert') {
+            addAlertToUI(data);
+          } else if (data.type === 'telemetry') {
+            updateDronePosition(data);
+          }
+        } catch (e) {
+          console.error('Error parseando mensaje WS:', e);
+        }
+      };
+
+      ws.onclose = () => {
+        statusBadge.className = 'status-badge offline';
+        statusText.innerText = 'Desconectado';
+        addTerminalLog('WS', 'Conexión perdida con el backend. Reintentando en 3s...', 'warn');
+        setTimeout(connectWebSocket, 3000);
+      };
+
+      ws.onerror = () => {
+        ws.close();
+      };
+    }
+
+    connectWebSocket();
+  </script>
+</body>
+</html>

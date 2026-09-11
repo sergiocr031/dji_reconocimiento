@@ -33,12 +33,23 @@ def main() -> None:
 
     # health check
     r = requests.get("http://127.0.0.1:8000/api/health", timeout=10)
-    print("Health:", r.status_code, r.json())
+    print(f"Estado del Servidor: {r.status_code} -> {r.json()}")
 
     r = requests.post("http://127.0.0.1:8000/api/frame", json=payload, timeout=60)
-    print("Frame:", r.status_code)
-    print(r.json())
+    print(f"Respuesta del Frame: HTTP {r.status_code}")
+    data = r.json()
+    print("--------------------------------------------------")
+    print(f"Exito: {data.get('success')}")
+    print(f"Alerta Activada: {data.get('alert')}")
+    print(f"Mensaje: {data.get('message')}")
+    print(f"Total Detecciones: {len(data.get('detections', []))}")
+    for idx, d in enumerate(data.get('detections', []), 1):
+        print(f"  [{idx}] Postura: {d['posture']} | Confianza: {d['score']:.2f} | BBox: {d['bbox']}")
+    print("--------------------------------------------------")
+    print("Abre http://localhost:8000 en tu navegador para ver el mapa y la alerta en vivo!")
 
 
 if __name__ == "__main__":
+    if sys.platform == "win32":
+        sys.stdout.reconfigure(encoding="utf-8")
     main()

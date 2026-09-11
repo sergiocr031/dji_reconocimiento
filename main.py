@@ -14,24 +14,29 @@ Endpoints:
   WS   /ws/alerts               -> stream de alertas en vivo
 """
 
-from __future__ import annotations
-
+import asyncio
 import base64
 import logging
 import threading
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any
 
 import cv2
 import numpy as np
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from posture_detector import PostureDetector
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("backend")
+
+STATIC_DIR = Path(__file__).resolve().parent / "static"
+INDEX_HTML = STATIC_DIR / "index.html"
 
 app = FastAPI(
     title="DJI Reconocimiento Backend",
@@ -47,31 +52,51 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+if STATIC_DIR.exists():
+    app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
+
 # Modelo de detección (se carga una vez al iniciar).
 DETECTOR = PostureDetector(model_path="yolov8n-pose.pt", confidence=0.4)
 
 # Estado compartido
 _latest_alerts: list[dict[str, Any]] = []
 _lock = threading.Lock()
-_alerts_condition = threading.Condition()
-_alert_counter = 0  # para que los clientes WS sepan si hay alertas nuevas
+_active_websockets: list[WebSocket] = []
+_event_loop: asyncio.AbstractEventLoop | None = None
+
+
+@app.on_event("startup")
+async def startup_event() -> None:
+    global _event_loop
+    _event_loop = asyncio.get_running_loop()
 
 
 class FrameRequest(BaseModel):
-    """Payload enviado por la app Android.
-
-    ``extra = "ignore"`` permite que la app mande campos adicionales
-    (``type``, ``risk``, etc.) sin que FastAPI rechace el request.
-    """
-
+    """Payload enviado por la app Android."""
     model_config = {"extra": "ignore"}
 
     image: str  # base64 JPEG
     lat: float
     lon: float
     altitude: float = 0.0
+    speed: float = 0.0
+    battery: int = 100
     device_id: str = "DRONE-01"
     drone_model: str = ""
+    timestamp: str | None = None
+
+
+class TelemetryRequest(BaseModel):
+    """Telemetría ligera enviada periódicamente por el dron."""
+    model_config = {"extra": "ignore"}
+
+    lat: float
+    lon: float
+    altitude: float = 24.5
+    speed: float = 14.2
+    battery: int = 89
+    device_id: str = "DRONE-01"
+    drone_model: str = "DJI Mavic 3 Enterprise"
     timestamp: str | None = None
 
 
@@ -89,30 +114,55 @@ def _decode_image(image_b64: str) -> np.ndarray | None:
     try:
         raw = base64.b64decode(image_b64)
         arr = np.frombuffer(raw, dtype=np.uint8)
-        frame = cv2.imdecode(arr, cv2.IMREAD_COLOR)
-        return frame
+        return cv2.imdecode(arr, cv2.IMREAD_COLOR)
     except Exception as exc:  # noqa: BLE001
         logger.warning("Error decodificando imagen: %s", exc)
         return None
 
 
+def _encode_image(frame_bgr: np.ndarray) -> str:
+    try:
+        success, buffer = cv2.imencode(".jpg", frame_bgr, [int(cv2.IMWRITE_JPEG_QUALITY), 80])
+        if success:
+            return base64.b64encode(buffer).decode("utf-8")
+    except Exception as exc:
+        logger.warning("Error codificando imagen: %s", exc)
+    return ""
+
+
+async def _broadcast(message: dict[str, Any]) -> None:
+    for ws in list(_active_websockets):
+        try:
+            await ws.send_json(message)
+        except Exception:
+            if ws in _active_websockets:
+                _active_websockets.remove(ws)
+
+
 def _emit_alert(alert: dict[str, Any]) -> None:
-    """Registra la alerta en la cola compartida."""
-    global _alert_counter
-    with _alerts_condition:
+    """Registra la alerta en la cola compartida y la transmite vía WebSocket."""
+    with _lock:
         _latest_alerts.append(alert)
         if len(_latest_alerts) > 200:
             _latest_alerts.pop(0)
-        _alert_counter += 1
-        _alerts_condition.notify_all()
+
+    if _event_loop and _event_loop.is_running():
+        asyncio.run_coroutine_threadsafe(_broadcast(alert), _event_loop)
+
+
+def _emit_telemetry(telemetry: dict[str, Any]) -> None:
+    if _event_loop and _event_loop.is_running():
+        asyncio.run_coroutine_threadsafe(_broadcast(telemetry), _event_loop)
 
 
 # --- Endpoints ---
 
 
 @app.get("/")
-def read_root() -> dict[str, Any]:
-    """Endpoint en la raíz para evitar errores 404 al abrir en el navegador."""
+def read_root():
+    """Sirve el dashboard interactivo de monitoreo en tiempo real."""
+    if INDEX_HTML.exists():
+        return FileResponse(INDEX_HTML)
     return {
         "status": "online",
         "service": "DJI Reconocimiento Backend",
@@ -121,9 +171,34 @@ def read_root() -> dict[str, Any]:
     }
 
 
+@app.get("/dashboard")
+def get_dashboard():
+    if INDEX_HTML.exists():
+        return FileResponse(INDEX_HTML)
+    return {"error": "Dashboard no disponible"}
+
+
 @app.get("/api/health")
 def health() -> dict[str, Any]:
     return {"status": "ok", "time": datetime.now(timezone.utc).isoformat()}
+
+
+@app.post("/api/telemetry")
+def receive_telemetry(req: TelemetryRequest) -> dict[str, Any]:
+    """Recibe paquetes de telemetría de vuelo pura desde el dron."""
+    ts = req.timestamp or datetime.now(timezone.utc).isoformat()
+    _emit_telemetry({
+        "type": "telemetry",
+        "device_id": req.device_id,
+        "drone_model": req.drone_model,
+        "lat": req.lat,
+        "lon": req.lon,
+        "altitude": req.altitude,
+        "speed": req.speed,
+        "battery": req.battery,
+        "timestamp": ts,
+    })
+    return {"success": True, "message": "Telemetría recibida"}
 
 
 @app.post("/api/frame", response_model=FrameResponse)
@@ -138,14 +213,33 @@ def process_frame(req: FrameRequest) -> FrameResponse:
             message="Imagen no válida",
         )
 
+    # 1. Inferencia de posturas corporales con YOLO
     detections = DETECTOR.detect(frame)
-
     abnormal = [d for d in detections if DETECTOR.is_abnormal(d["posture"])]
-
     alert_triggered = len(abnormal) > 0
 
+    # 2. Generar imagen con cajas y puntos anatómicos dibujados
+    annotated_frame = DETECTOR.annotate(frame, detections)
+    annotated_b64 = _encode_image(annotated_frame)
+
+    ts = req.timestamp or datetime.now(timezone.utc).isoformat()
+
+    # 3. Transmitir telemetría para ver el dron en vivo en el mapa
+    _emit_telemetry({
+        "type": "telemetry",
+        "device_id": req.device_id,
+        "drone_model": req.drone_model,
+        "lat": req.lat,
+        "lon": req.lon,
+        "altitude": req.altitude,
+        "speed": req.speed,
+        "battery": req.battery,
+        "timestamp": ts,
+        "detections_count": len(detections),
+    })
+
+    # 4. Si hay postura anormal (persona en peligro/acostada), emitir alerta
     if alert_triggered:
-        ts = req.timestamp or datetime.now(timezone.utc).isoformat()
         for d in abnormal:
             alert = {
                 "type": "alert",
@@ -155,11 +249,12 @@ def process_frame(req: FrameRequest) -> FrameResponse:
                 "device_id": req.device_id,
                 "drone_model": req.drone_model,
                 "timestamp": ts,
+                "image": annotated_b64,
             }
             _emit_alert(alert)
 
     message = (
-        f"Alerta: {len(abnormal)} persona(s) en posición anormal"
+        f"🚨 ALERTA: {len(abnormal)} persona(s) en peligro"
         if alert_triggered
         else f"{len(detections)} persona(s) detectada(s)"
     )
@@ -189,21 +284,11 @@ def get_recent_alerts(limit: int = 20) -> dict[str, Any]:
 @app.websocket("/ws/alerts")
 async def ws_alerts(ws: WebSocket) -> None:
     await ws.accept()
-
-    last_seen = _alert_counter
+    _active_websockets.append(ws)
     try:
         while True:
-            with _alerts_condition:
-                while last_seen >= _alert_counter:
-                    _alerts_condition.wait(1.0)  # despierta al haber alerta nueva o cada 1s
-                new_alerts = list(_latest_alerts)
-                local_counter = _alert_counter
-            # enviar sólo las nuevas desde last_seen
-            to_send = new_alerts[-(local_counter - last_seen):]
-            last_seen = local_counter
-            for alert in to_send:
-                await ws.send_json(alert)
-    except WebSocketDisconnect:
-        pass
-    except Exception:  # noqa: BLE001
-        pass
+            # Mantener la conexión activa esperando mensajes o pings
+            await ws.receive_text()
+    except (WebSocketDisconnect, Exception):
+        if ws in _active_websockets:
+            _active_websockets.remove(ws)

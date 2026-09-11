@@ -17,6 +17,10 @@ RUN pip install --upgrade pip \
     && pip install --index-url https://download.pytorch.org/whl/cpu torch torchvision \
     && pip install -r requirements.txt
 
+# Descargar el modelo de pose de YOLO dentro de la imagen, para que el
+# servidor arranque rápido y sin depender de internet en runtime.
+RUN python -c "from ultralytics import YOLO; YOLO('yolov8n-pose.pt')"
+
 # Copiar el código
 COPY . .
 
