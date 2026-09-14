@@ -17,6 +17,11 @@ srv_out.log
 srv_err.log
 srv.pid
 
+# Archivos temporales de pruebas
+temp_check.js
+test_alert.js
+index.html.bak
+
 # Windows specific
 Thumbs.db
 Desktop.ini

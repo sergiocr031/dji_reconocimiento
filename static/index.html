@@ -16,21 +16,23 @@
 
   <style>
     :root {
-      --bg-dark: #0B0F17;
-      --panel-dark: #121824;
-      --panel-surface: rgba(18, 24, 36, 0.95);
-      --border-color: #1E293B;
-      --border-light: rgba(255, 255, 255, 0.08);
-      --accent-red: #EF4444;
-      --accent-red-glow: rgba(239, 68, 68, 0.4);
-      --accent-green: #10B981;
-      --accent-green-glow: rgba(16, 185, 129, 0.4);
+      --bg-dark: #080C13;
+      --panel-dark: #0E1520;
+      --panel-surface: rgba(14, 21, 32, 0.97);
+      --border-color: #1A2436;
+      --border-light: rgba(255, 255, 255, 0.07);
+      --accent-red: #FF3B3B;
+      --accent-red-glow: rgba(255, 59, 59, 0.5);
+      --accent-red-deep: rgba(255, 59, 59, 0.12);
+      --accent-green: #00E896;
+      --accent-green-glow: rgba(0, 232, 150, 0.45);
       --accent-cyan: #00F0FF;
+      --accent-cyan-glow: rgba(0, 240, 255, 0.35);
       --accent-blue: #38BDF8;
-      --accent-amber: #F59E0B;
-      --text-main: #F8FAFC;
-      --text-muted: #94A3B8;
-      --text-dim: #64748B;
+      --accent-amber: #FFC130;
+      --text-main: #F0F6FF;
+      --text-muted: #8BA0BC;
+      --text-dim: #4A607A;
       --font-mono: 'JetBrains Mono', monospace;
       --font-ui: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
     }
@@ -70,49 +72,63 @@
     /* HEADER COMPACTO */
     header {
       background: var(--panel-surface);
-      backdrop-filter: blur(12px);
+      backdrop-filter: blur(16px);
       border-bottom: 1px solid var(--border-color);
-      height: 52px;
-      padding: 0 16px;
+      height: 56px;
+      padding: 0 20px;
       display: flex;
       justify-content: space-between;
       align-items: center;
       z-index: 1000;
-      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+      box-shadow: 0 1px 0 var(--border-color), 0 4px 24px rgba(0, 0, 0, 0.7);
+      position: relative;
+    }
+    header::after {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--accent-cyan), transparent);
+      opacity: 0.4;
     }
 
     .brand {
       display: flex;
       align-items: center;
-      gap: 12px;
+      gap: 14px;
     }
     .brand-badge {
-      background: rgba(0, 240, 255, 0.1);
-      border: 1px solid rgba(0, 240, 255, 0.3);
+      background: rgba(0, 240, 255, 0.08);
+      border: 1px solid rgba(0, 240, 255, 0.5);
       color: var(--accent-cyan);
       font-family: var(--font-mono);
-      font-size: 0.7rem;
+      font-size: 0.72rem;
       font-weight: 700;
-      letter-spacing: 1px;
-      padding: 3px 8px;
-      border-radius: 4px;
+      letter-spacing: 2px;
+      padding: 4px 10px;
+      border-radius: 3px;
+      text-shadow: 0 0 12px var(--accent-cyan);
+      box-shadow: 0 0 10px rgba(0, 240, 255, 0.15), inset 0 0 8px rgba(0, 240, 255, 0.05);
     }
     .brand-title {
-      font-size: 0.95rem;
+      font-size: 0.88rem;
       font-weight: 700;
-      letter-spacing: 0.5px;
+      letter-spacing: 1.5px;
       color: var(--text-main);
+      text-transform: uppercase;
       display: flex;
       align-items: baseline;
-      gap: 8px;
+      gap: 10px;
     }
     .brand-sub {
       font-family: var(--font-mono);
-      font-size: 0.68rem;
+      font-size: 0.65rem;
       color: var(--accent-cyan);
       text-transform: uppercase;
-      letter-spacing: 1px;
-      opacity: 0.85;
+      letter-spacing: 1.5px;
+      opacity: 0.7;
     }
 
     .header-telemetry {
@@ -224,7 +240,7 @@
       flex: 1;
       position: relative;
       overflow: hidden;
-      height: calc(100vh - 52px);
+      height: calc(100vh - 56px);
     }
 
     /* MAPA EN COLOR BLANCO / CLARO (ALTA VISIBILIDAD) */
@@ -434,8 +450,8 @@
     }
 
     .module-header {
-      padding: 9px 16px;
-      background: rgba(11, 15, 23, 0.7);
+      padding: 10px 16px;
+      background: rgba(8, 12, 19, 0.85);
       border-bottom: 1px solid var(--border-color);
       border-top: 1px solid var(--border-color);
       display: flex;
@@ -450,18 +466,20 @@
     }
     .module-title {
       font-family: var(--font-mono);
-      font-size: 0.68rem;
+      font-size: 0.72rem;
       font-weight: 700;
       text-transform: uppercase;
-      letter-spacing: 1.2px;
+      letter-spacing: 1.8px;
       color: var(--text-muted);
       display: flex;
       align-items: center;
-      gap: 6px;
+      gap: 8px;
     }
     .module-title::before {
       content: '//';
       color: var(--accent-cyan);
+      text-shadow: 0 0 8px var(--accent-cyan);
+      font-size: 0.8rem;
     }
     .module-toggle-btn {
       background: transparent;
@@ -490,12 +508,12 @@
     .metrics-grid {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
-      gap: 8px;
+      gap: 6px;
     }
     .metric-card {
-      background: rgba(15, 23, 42, 0.7);
+      background: rgba(10, 15, 26, 0.8);
       border: 1px solid var(--border-color);
-      border-radius: 4px;
+      border-radius: 3px;
       padding: 8px 10px;
       display: flex;
       flex-direction: column;
@@ -503,28 +521,38 @@
       transition: border-color 0.2s;
     }
     .metric-card:hover {
-      border-color: rgba(255, 255, 255, 0.18);
+      border-color: rgba(255, 255, 255, 0.15);
+    }
+    .metric-card.danger-metric {
+      background: rgba(255, 59, 59, 0.06);
+      border-color: rgba(255, 59, 59, 0.3);
+      box-shadow: inset 0 0 16px rgba(255, 59, 59, 0.06);
+    }
+    .metric-card.danger-metric:hover {
+      border-color: rgba(255, 59, 59, 0.5);
     }
     .metric-label {
       font-family: var(--font-mono);
-      font-size: 0.63rem;
-      color: var(--text-muted);
+      font-size: 0.6rem;
+      color: var(--text-dim);
       text-transform: uppercase;
-      letter-spacing: 0.5px;
-      margin-bottom: 4px;
+      letter-spacing: 1px;
+      margin-bottom: 5px;
     }
     .metric-value {
       font-family: var(--font-mono);
-      font-size: 1.15rem;
+      font-size: 1.35rem;
       font-weight: 700;
-      line-height: 1.2;
+      line-height: 1.1;
+      letter-spacing: -0.02em;
     }
     .metric-value.red {
       color: var(--accent-red);
-      text-shadow: 0 0 10px rgba(239, 68, 68, 0.3);
+      text-shadow: 0 0 16px var(--accent-red-glow);
     }
     .metric-value.cyan {
       color: var(--accent-cyan);
+      text-shadow: 0 0 10px rgba(0, 240, 255, 0.25);
     }
     .metric-value.green {
       color: var(--accent-green);
@@ -534,9 +562,11 @@
     }
     .metric-sub {
       font-family: var(--font-mono);
-      font-size: 0.62rem;
+      font-size: 0.58rem;
       color: var(--text-dim);
-      margin-top: 2px;
+      margin-top: 3px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
     }
 
     /* MÓDULO 2: FEED DE VIDEO & OSD */
@@ -736,7 +766,7 @@
       padding: 12px 16px;
       display: flex;
       flex-direction: column;
-      gap: 10px;
+      gap: 12px;
       min-height: 250px;
     }
     .terminal-console {
@@ -770,78 +800,121 @@
 
     .empty-state {
       text-align: center;
-      padding: 35px 16px;
-      color: var(--text-muted);
+      padding: 40px 20px;
+      color: var(--text-dim);
       font-family: var(--font-mono);
-      font-size: 0.75rem;
-      border: 1px dashed var(--border-color);
-      border-radius: 4px;
-      background: rgba(15, 23, 42, 0.4);
+      font-size: 0.72rem;
+      border: 1px solid var(--border-color);
+      border-radius: 3px;
+      background: rgba(10, 15, 26, 0.6);
+      letter-spacing: 0.5px;
+    }
+    .empty-state-icon {
+      display: block;
+      margin-bottom: 10px;
+      opacity: 0.35;
+    }
+    .empty-state-icon svg {
+      width: 28px;
+      height: 28px;
+    }
+
+    @keyframes alertSlideIn {
+      from { opacity: 0; transform: translateX(12px); }
+      to   { opacity: 1; transform: translateX(0); }
+    }
+    @keyframes alertPulse {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(255, 59, 59, 0), 0 4px 20px rgba(0, 0, 0, 0.5); }
+      50%       { box-shadow: 0 0 0 3px rgba(255, 59, 59, 0.12), 0 4px 20px rgba(0, 0, 0, 0.5); }
     }
 
     .alert-card {
-      background: rgba(18, 24, 36, 0.95);
-      border: 1px solid rgba(239, 68, 68, 0.4);
+      background: rgba(255, 59, 59, 0.06);
+      border: 1px solid rgba(255, 59, 59, 0.35);
       border-left: 4px solid var(--accent-red);
-      border-radius: 4px;
-      padding: 12px;
+      border-radius: 3px;
+      padding: 0;
       cursor: pointer;
-      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+      overflow: hidden;
+      animation: alertSlideIn 0.25s cubic-bezier(0.2, 0.8, 0.2, 1), alertPulse 2.5s ease-in-out 0.3s 3;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5), inset 0 0 24px rgba(255, 59, 59, 0.04);
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .alert-card::before {
+      content: '';
+      display: block;
+      height: 2px;
+      background: linear-gradient(90deg, var(--accent-red), rgba(255, 59, 59, 0.4), transparent);
     }
     .alert-card:hover {
-      background: rgba(28, 36, 52, 1);
-      border-color: var(--accent-red);
-      transform: translateX(-2px);
-      box-shadow: 0 4px 14px rgba(239, 68, 68, 0.25);
+      border-color: rgba(255, 59, 59, 0.65);
+      box-shadow: 0 6px 28px rgba(255, 59, 59, 0.2), inset 0 0 24px rgba(255, 59, 59, 0.07);
+    }
+    .alert-card-inner {
+      padding: 12px 14px;
     }
     .alert-card-header {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 6px;
+      margin-bottom: 7px;
     }
     .alert-tag {
       font-family: var(--font-mono);
-      font-size: 0.7rem;
+      font-size: 0.68rem;
       font-weight: 700;
       color: var(--accent-red);
-      background: rgba(239, 68, 68, 0.15);
-      border: 1px solid rgba(239, 68, 68, 0.3);
-      padding: 2px 6px;
-      border-radius: 3px;
+      text-transform: uppercase;
+      letter-spacing: 1.2px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .alert-tag-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--accent-red);
+      box-shadow: 0 0 6px var(--accent-red);
+      flex-shrink: 0;
+      animation: blink 1s infinite alternate;
     }
     .alert-time {
       font-family: var(--font-mono);
-      font-size: 0.7rem;
-      color: var(--text-muted);
+      font-size: 0.65rem;
+      color: var(--text-dim);
+      letter-spacing: 0.5px;
     }
     .alert-location {
       font-family: var(--font-mono);
-      font-size: 0.8rem;
+      font-size: 0.78rem;
       font-weight: 700;
       color: var(--text-main);
-      margin-bottom: 4px;
+      margin-bottom: 6px;
+      letter-spacing: 0.3px;
     }
     .alert-meta {
       font-family: var(--font-mono);
-      font-size: 0.7rem;
-      color: var(--text-muted);
+      font-size: 0.65rem;
+      color: var(--text-dim);
       display: flex;
       flex-wrap: wrap;
       gap: 10px;
-      margin-bottom: 6px;
+      margin-bottom: 8px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
     }
     .alert-meta span {
       color: var(--accent-cyan);
+      font-weight: 600;
     }
     .alert-thumbnail {
       width: 100%;
-      height: 125px;
+      height: 130px;
       object-fit: cover;
-      border-radius: 4px;
-      border: 1px solid var(--border-color);
-      margin-top: 4px;
+      display: block;
+      margin: 0;
+      border-top: 1px solid rgba(255, 59, 59, 0.2);
     }
 
     /* LEAFLET POPUP */
@@ -916,20 +989,20 @@
     <!-- Indicadores de Telemetría en Tiempo Real del Header -->
     <div class="header-telemetry">
       <div class="telemetry-tag" title="Nivel de Batería del Dron">
-        <span>🔋</span>
+        <span style="font-family:var(--font-mono);font-size:0.6rem;color:var(--text-dim)">BAT</span>
         <span id="hdrBattery" class="telemetry-val highlight">-- %</span>
       </div>
       <div class="telemetry-tag" title="Señal de Control Remoto">
-        <span>📶</span>
+        <span style="font-family:var(--font-mono);font-size:0.6rem;color:var(--text-dim)">RC</span>
         <span id="hdrSignal" class="telemetry-val">--</span>
       </div>
       <div class="telemetry-tag" title="Latencia de Conexión">
-        <span>⚡</span>
+        <span style="font-family:var(--font-mono);font-size:0.6rem;color:var(--text-dim)">LAT</span>
         <span id="hdrLatency" class="telemetry-val">-- ms</span>
       </div>
       <div class="telemetry-tag" title="Satélites en Enlace">
-        <span>🛰️</span>
-        <span id="hdrGpsSats" class="telemetry-val">-- SATS</span>
+        <span style="font-family:var(--font-mono);font-size:0.6rem;color:var(--text-dim)">GPS</span>
+        <span id="hdrGpsSats" class="telemetry-val">-- SAT</span>
       </div>
     </div>
 
@@ -1014,7 +1087,7 @@
       
       <div id="metricsSection" class="metrics-section">
         <div class="metrics-grid">
-          <div class="metric-card">
+          <div class="metric-card danger-metric">
             <div class="metric-label">Alertas Peligro</div>
             <div id="alertCounter" class="metric-value red">0</div>
             <div class="metric-sub">Personas Caídas</div>
@@ -1104,18 +1177,25 @@
       <div class="logs-section">
         <div class="log-tabs">
           <div id="tabAlerts" class="log-tab active" onclick="switchTab('alerts')">
-            <span>🚨 Alertas de Peligro</span>
+            <span>ALERTAS DE PELIGRO</span>
             <span id="tabBadgeCount" style="background: rgba(239, 68, 68, 0.2); color: var(--accent-red); padding: 1px 6px; border-radius: 3px; font-size: 0.65rem;">0</span>
           </div>
           <div id="tabConsole" class="log-tab" onclick="switchTab('console')">
-            <span>💻 Consola de Sistema</span>
+            <span>CONSOLA SYS</span>
           </div>
         </div>
 
         <!-- Lista de Alertas -->
         <div id="alertsList" class="alerts-list">
           <div class="empty-state">
-            <span>📡 Esperando transmisión de telemetría y video desde el dron...</span>
+            <span class="empty-state-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="9"/>
+                <path d="M12 3v2M12 19v2M3 12h2M19 12h2"/>
+                <circle cx="12" cy="12" r="3"/>
+              </svg>
+            </span>
+            SIN ALERTAS ACTIVAS<br>SISTEMA EN ESPERA DE TRANSMISIÓN
           </div>
         </div>
 
@@ -1380,21 +1460,22 @@
       document.getElementById('hudTargetState').innerText = '🚨 ALERTA IDENTIFICADA';
       document.getElementById('hudTargetState').style.color = 'var(--accent-red)';
 
-      // Crear tarjeta táctica
+      // Crear tarjeta táctica (compacta, sin imagen grande)
       const card = document.createElement('div');
       card.className = 'alert-card';
       card.innerHTML = `
-        <div class="alert-card-header">
-          <span class="alert-tag">⚠️ PERSONA ACOSTADA</span>
-          <span class="alert-time">${timeStr}</span>
+        <div class="alert-card-inner">
+          <div class="alert-card-header">
+            <span class="alert-tag"><span class="alert-tag-dot"></span>PERSONA ACOSTADA</span>
+            <span class="alert-time">${timeStr}</span>
+          </div>
+          <div class="alert-location">LAT: ${lat.toFixed(5)}&deg; &nbsp;LON: ${lon.toFixed(5)}&deg;</div>
+          <div class="alert-meta">
+            <div>ALT: <span>${alt.toFixed(1)} m</span></div>
+            <div>CONFIANZA: <span>${scorePct}%</span></div>
+            <div>DRON: <span>${alert.drone_model || 'DJI'}</span></div>
+          </div>
         </div>
-        <div class="alert-location">📍 LAT: ${lat.toFixed(5)}, LON: ${lon.toFixed(5)}</div>
-        <div class="alert-meta">
-          <div>ALTITUD: <span>${alt.toFixed(1)}m</span></div>
-          <div>CONFIANZA: <span>${scorePct}%</span></div>
-          <div>DRON: <span>${alert.drone_model || 'DJI'}</span></div>
-        </div>
-        ${alert.image ? `<img class="alert-thumbnail" src="data:image/jpeg;base64,${alert.image}" alt="Captura Detección">` : ''}
       `;
 
       card.onclick = () => {
@@ -1492,7 +1573,14 @@
       document.getElementById('tabBadgeCount').innerText = '0';
       document.getElementById('alertsList').innerHTML = `
         <div class="empty-state">
-          <span>📡 Esperando nuevas alertas de telemetría y video...</span>
+          <span class="empty-state-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="9"/>
+              <path d="M12 3v2M12 19v2M3 12h2M19 12h2"/>
+              <circle cx="12" cy="12" r="3"/>
+            </svg>
+          </span>
+          HISTORIAL LIMPIADO<br>SISTEMA EN ESPERA
         </div>
       `;
       addTerminalLog('SYS', 'Historial de alertas limpiado manualmente.', 'warn');
