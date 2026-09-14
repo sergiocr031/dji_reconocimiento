@@ -712,6 +712,7 @@
       flex-direction: column;
       background: var(--panel-dark);
       min-height: 320px;
+      max-height: 55vh;
       flex: 1;
     }
     .btn-clear {
@@ -768,6 +769,10 @@
       flex-direction: column;
       gap: 12px;
       min-height: 250px;
+      flex: 1;
+      overflow-y: auto;
+      overflow-x: hidden;
+      scrollbar-width: thin;
     }
     .terminal-console {
       display: none;
@@ -782,6 +787,9 @@
     }
     .alerts-list.hidden {
       display: none;
+    }
+    .alerts-list .alert-card {
+      flex-shrink: 0;
     }
 
     .terminal-line {
@@ -1429,7 +1437,7 @@
     // ==========================================================================
     // 6. PROCESAMIENTO DE ALERTAS DE EMERGENCIA
     // ==========================================================================
-    function addAlertToUI(alert) {
+    function addAlertToUI(alert, skipPan = false) {
       alertCount++;
       document.getElementById('alertCounter').innerText = alertCount;
       document.getElementById('tabBadgeCount').innerText = alertCount;
@@ -1484,6 +1492,7 @@
       };
 
       alertsList.insertBefore(card, alertsList.firstChild);
+      alertsList.scrollTop = 0;
 
       // Crear marcador en el mapa
       const marker = L.marker([lat, lon], { icon: dangerIcon }).addTo(map);
@@ -1500,7 +1509,7 @@
       `);
 
       alertMarkers.push(marker);
-      map.panTo([lat, lon]);
+      if (!skipPan) map.panTo([lat, lon]);
 
       addTerminalLog('ALERTA', `Postura anormal detectada en [${lat.toFixed(4)}, ${lon.toFixed(4)}] - Confianza: ${scorePct}%`, 'alert');
       playAlertSound();
@@ -1609,7 +1618,7 @@
           .then(res => res.json())
           .then(data => {
             if (data.alerts && data.alerts.length > 0) {
-              data.alerts.forEach(addAlertToUI);
+              data.alerts.forEach(a => addAlertToUI(a, true));
             }
           })
           .catch(err => addTerminalLog('WARN', `Error cargando alertas previas: ${err.message}`, 'warn'));
